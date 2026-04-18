@@ -10,21 +10,13 @@ I shifted my focus to GCash because of this one interaction with my mom:
 >
 >"Son, can you help me login to my GCash, I’ve tried multiple OTPs and still can’t access my account."
 
-Based on this interaction this made me think, that are other users of GCash also experiencing this? This prompted me to shift my initial target of gambling platforms to GCash and take a look if others are experiencing isses as well.
+Based on this interaction this made me think, that are other users of GCash also experiencing this? This prompted me to shift my initial target of gambling platforms to GCash and take a look if others are experiencing issues as well.
 
 
 ## Problem Statement
 
 <p align="center">
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/GCash_logo.svg/500px-GCash_logo.svg.png" alt="GCash Logo" width="220"/>
-</p>
-
-<h1 align="center">
-GCash Reviews Pipeline
-</h1>
-
-<p align="center">
-Understanding User Sentiment from Google Play Reviews
 </p>
 
 User reviews from [GCash](https://play.google.com/store/apps/details?id=com.globe.gcash.android&hl=en) are a goldmine of opinions, people talking about bugs, frustrations, good experiences, and everything in between. The problem is, these reviews are just walls of unstructured text, making it hard to actually see patterns or get a clear sense of how users feel overall.
