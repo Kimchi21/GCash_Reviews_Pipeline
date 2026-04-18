@@ -51,8 +51,8 @@ The objective is to create a scalable system that converts raw user feedback int
   - Raw reviews extracted as JSON
 
 - **Data Lake (Medallion Architecture - GCS):**
-  - **Bronze Layer:** Raw JSON storage
-  - **Silver Layer:** Cleaned and enriched datasets
+  - **Bronze Layer:** Raw JSON storage -> Google Cloud Storage
+  - **Silver Layer:** Cleaned and enriched datasets -> Google Cloud Storage
     - Text cleaning & preprocessing
     - Sentiment classification (Positive / Neutral / Negative)
     - Issue categorization & clustering (e.g., OTP, login issues, crashes)
@@ -80,13 +80,115 @@ The objective is to create a scalable system that converts raw user feedback int
   - Sentiment classification validation
   - dbt transformation testing and consistency checks
 
+-----
 
+### Pipeline Logic and Setup
+
+#### 🥉 Ingestion (Bronze Layer)
+
+The ingestion layer is implemented using a two-phase batch ingestion strategy:
+
+| Phase            | Type                        | Purpose                   |
+|------------------|-----------------------------|---------------------------|
+| Backfill scraper | Full batch ingestion        | Historical reconstruction |
+| Kestra pipeline  | Incremental batch ingestion | Ongoing updates           |
+
+This ensures both:
+
+- Complete historical coverage for analytics
+- Ongoing updates for freshness
+
+#### 1. Historical Backfill Scraper (Bootstrap Phase)
+
+A standalone Python script (`scraper.py`) is used to perform a **full historical extraction of Google Play reviews** using `google-play-scraper`. This script is executed once to initialize the data lake with complete historical coverage.
+
+The target application is identified using its Google Play Store app ID (shown below). The scraping configuration is set to `country = ph` to target reviews from the Philippines.
+
+<p align="center">
+  <img src="resources/images/gcash_id.png" alt="GCash app ID">
+</p>
+
+---
+
+#### Key Behavior
+
+- Extracts reviews in **descending chronological order (NEWEST first)**
+- Uses **continuation tokens** to paginate through the full review history
+- Groups extracted reviews into **monthly partitions (YYYY/MM format)**
+- Uploads each completed monthly batch directly to **Google Cloud Storage (GCS) Bronze layer**
+- Ensures full historical reconstruction of the dataset before incremental ingestion begins
+
+#### Backfill Ingestion Completion
+
+The full historical backfill process took approximately **2 hours** to complete. A total of **931,715 reviews (2012–2026)** were successfully extracted from the Google Play Store.
+
+| Ingestion Run | Ingestion Complete |
+|--------------|--------------------|
+| ![](resources/images/ingestion_run.png) | ![](resources/images/ingestion_complete.png) |
+
+All records were partitioned by year and month during ingestion and uploaded to the **Google Cloud Storage Bronze layer** under the `gcash-reviews-raw` bucket.
+
+<p align="center">
+  <img src="resources/images/gcs_bucket_raw.png" alt="GCash app ID">
+</p>
+
+#### Returned Data Schema
+
+Each review extracted from the Google Play Store is represented as a structured JSON object with the following fields:
+```json id="r8v3qp"
+{
+  "reviewId": "string",
+  "userName": "string",
+  "userImage": "string (URL)",
+  "content": "string",
+  "score": "integer (1–5)",
+  "thumbsUpCount": "integer",
+  "reviewCreatedVersion": "string",
+  "at": "timestamp",
+  "replyContent": "string | null",
+  "repliedAt": "timestamp | null",
+  "appVersion": "string"
+}
+```
+> Note: To ensure data privacy, the `userName` and `userImage` fields will be dropped during the processing stage.
+
+#### 2. Incremental batch ingestion (Kestra)
+
+The incremental ingestion layer is orchestrated using Kestra which is hosted locally in docker and is designed to continuously update the Bronze layer with newly available reviews.
+
+> Note: To simulate a real-world incremental ingestion scenario, the historical partition for **2026-04** was intentionally removed from the dataset. This allows the Kestra pipeline to re-ingest and populate this partition as part of its scheduled execution.
+
+This approach ensures that:
+- Incremental ingestion logic is properly tested
+- The pipeline can safely handle missing partitions
+- Data consistency is maintained across reruns
+
+---
+
+#### Key Behavior
+
+- Runs on a scheduled batch workflow (e.g., daily or hourly)
+- References the watermark based on last review using 
+  - Used (`incremental_scraper.py`) and (`watermark_seeder.py`) locally first before proceeding to kestra.
+- Fetches only newly available reviews from the source
+- Writes output directly to the **Bronze layer in Google Cloud Storage**
+- Maintains the same monthly partitioning strategy (`YYYY/MM`)
+- Ensures idempotent writes to prevent duplicate ingestion
+
+
+
+
+
+----
 #### Checklist
-- [x] Terraform Provision
-- [ ] Ingestion > Batch - Using google-play-scraper = json
-- [ ] Data Lake > Raw and Processed
+- [x] Terraform Provision - GCP > buckets and bigquery
+- [x] Ingestion:
+   - [x] Histrocial Backfill - Using google-play-scraper = json
+   - [ ] Incremental Batch - Kestra
+- [ ] Data Lake
+   - [x] Raw 
+   - [ ] Processed
 - [ ] Processing > parse, clean, issue assignment, sentiment assignment and transforms
-- [ ] GCP > buckets and bigquery
 - [ ] Warehouse > local (duckdb fallback) and GCP
 - [ ] dbt > Transforms
 - [ ] orchestrate > Kestra
