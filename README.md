@@ -6,7 +6,7 @@ So during my initial project scoping process, I was initially targeting on how g
 
 I shifted my focus to GCash because of this one interaction with my mom:
 
-> *"Anak tulugan mo nga ako mag-login sa GCash at nakailang OTP na ako di parin ako makapasok sa GCash"*
+> *"Anak tulugan mo nga ako mag-login sa GCash at nakailang OTP na ako di parin ako makapasok sa GCash" (Tagalog/Philippines*)
 >
 >"Son, can you help me login to my GCash, I’ve tried multiple OTPs and still can’t access my account."
 
@@ -48,23 +48,45 @@ So instead of reading reviews one by one, this project builds an end-to-end data
 The objective is to create a scalable system that converts raw user feedback into structured analytical data, allowing stakeholders to better understand how users perceive the application and quickly detect shifts in customer sentiment.
 
 
-## Project Archietcture
-- **Infrastructure**: Terraform (GCP provisioning)
-- **Ingestion**: Batch pipeline using google-play-scraper → JSON
-- **Data Lake**: GCP Cloud Storage (raw & processed layers)
-- **Processing**:
-  - Parsing & cleaning
-  - Sentiment classification
-  - Issue categorization (enrichment layer)
-- **Data Warehouse**:
-  - BigQuery (primary)
-  - DuckDB (local fallback / dev)
-- **Transformations**: dbt
-- **Orchestration**: Kestra
-- **Serving Layer**: Streamlit dashboard
-- **Testing**:
-  - Data quality checks
-  - Sentiment & transformation validation
+## 🏗️ Project Archietcture
+
+![GCash Reviews Pipeline](resources/diagrams/gcash-reviews-pipeline_withbg.gif)
+
+- **Infrastructure:** Terraform (GCP provisioning)
+
+- **Ingestion (Batch Pipeline):**
+  - Google Play Store scraping using [google-play-scraper](https://pypi.org/project/google-play-scraper/)
+  - Raw reviews extracted as JSON
+
+- **Data Lake (Medallion Architecture - GCS):**
+  - **Bronze Layer:** Raw JSON storage
+  - **Silver Layer:** Cleaned and enriched datasets
+    - Text cleaning & preprocessing
+    - Sentiment classification (Positive / Neutral / Negative)
+    - Issue categorization & clustering (e.g., OTP, login issues, crashes)
+
+- **Data Warehouse:**
+  - BigQuery (primary analytical store)
+  - DuckDB (local development / testing fallback)
+
+- **Transformations (Gold Layer):**
+  - dbt-based modeling inside BigQuery
+  - Aggregations (sentiment trends, issue frequency, time-based analysis)
+  - Creation of analytics-ready tables
+
+- **Orchestration:**
+  - Kestra (pipeline scheduling and workflow management across ingestion → processing → dbt runs)
+
+- **Serving Layer:**
+  - Streamlit dashboard for:
+    - Sentiment trends over time
+    - Top issue categories
+    - Review clustering insights
+
+- **Testing & Validation:**
+  - Data quality checks (schema + null validation)
+  - Sentiment classification validation
+  - dbt transformation testing and consistency checks
 
 
 #### Checklist
