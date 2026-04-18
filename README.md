@@ -82,7 +82,7 @@ The objective is to create a scalable system that converts raw user feedback int
 
 
 #### Checklist
-- [ ] Terraform Provision
+- [x] Terraform Provision
 - [ ] Ingestion > Batch - Using google-play-scraper = json
 - [ ] Data Lake > Raw and Processed
 - [ ] Processing > parse, clean, issue assignment, sentiment assignment and transforms
