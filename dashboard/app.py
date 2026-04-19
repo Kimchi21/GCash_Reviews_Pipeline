@@ -25,7 +25,7 @@ st.set_page_config(
 @st.cache_data(ttl=3600)
 def load_from_bigquery():
     credentials = service_account.Credentials.from_service_account_file(
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+        os.environ["gcp_service_account"]
     )
     client = bigquery.Client(
         project=os.environ["GCP_PROJECT_ID"],
@@ -304,7 +304,7 @@ with col1:
         color_discrete_sequence=["#4F8BF9"],
     )
     fig.update_layout(xaxis_title="Month", yaxis_title="Reviews")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 with col2:
     fig = px.line(
@@ -320,7 +320,7 @@ with col2:
         yaxis_title="Avg rating",
         yaxis=dict(range=[1, 5])
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 st.divider()
 
@@ -337,7 +337,7 @@ fig = px.area(
     color_discrete_map=sentiment_colors,
 )
 fig.update_layout(xaxis_title="Month", yaxis_title="Reviews")
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 st.divider()
 
@@ -365,7 +365,7 @@ with col1:
         color_continuous_scale="Blues",
     )
     fig.update_layout(xaxis_title="Reviews", yaxis_title="Category")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 with col2:
     fig = px.pie(
@@ -375,7 +375,7 @@ with col2:
         title="Category share",
         hole=0.4,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 cat_time = (
     category_filtered
@@ -392,7 +392,7 @@ fig = px.line(
     markers=False,
 )
 fig.update_layout(xaxis_title="Month", yaxis_title="Reviews")
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 cat_sentiment = (
     category_filtered
@@ -410,7 +410,7 @@ fig = px.bar(
     barmode="stack",
 )
 fig.update_layout(xaxis_title="Category", yaxis_title="Reviews")
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 st.divider()
 
@@ -432,7 +432,7 @@ with col1:
         color_continuous_scale="RdYlGn",
     )
     fig.update_layout(xaxis_title="Avg rating", yaxis_title="Version")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 with col2:
     top_by_volume = version_filtered.nlargest(20, "total_reviews")
@@ -446,7 +446,7 @@ with col2:
         color_continuous_scale="Blues",
     )
     fig.update_layout(xaxis_title="Total reviews", yaxis_title="Version")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 top15 = version_filtered.nlargest(15, "total_reviews")
 version_sentiment = top15.melt(
@@ -466,7 +466,7 @@ fig = px.bar(
     barmode="stack",
 )
 fig.update_layout(xaxis_title="Version", yaxis_title="Reviews")
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 preferred_cols = [
     "app_version", "total_reviews", "avg_rating",
@@ -477,7 +477,7 @@ available_cols = [c for c in preferred_cols if c in version_filtered.columns]
 st.subheader("Version details")
 st.dataframe(
     version_filtered[available_cols].reset_index(drop=True),
-    use_container_width=True,
+    width="stretch",
 )
 
 st.divider()

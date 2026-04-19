@@ -449,6 +449,8 @@ The full pipeline is orchestrated using **Kestra** running locally via Docker. A
 
 ![GCash App Reviews Dashboard](resources/images/GCash%20App%20Reivews%20Dashboard.gif)
 
+**Dasboard Link**: 
+
 The dashboard is built using **Streamlit** and provides an interactive interface to explore GCash app reviews across multiple dimensions. It connects to **BigQuery** as the primary data source with a **DuckDB local fallback** for offline use accesing the [gcash_reviews.parquet](notebooks/gcash_reviews.parquet) generated when running the eda notebook.
 
 ### Data Source Toggle
@@ -491,8 +493,6 @@ Five high-level metrics displayed at the top of the dashboard reflecting the cur
 | Negative | Total count of negative reviews |
 | Positive rate | Percentage of reviews classified as positive |
 
----
-
 #### 📈 Volume & Ratings
 
 Covers the overall review activity and rating trends over time:
@@ -500,7 +500,6 @@ Covers the overall review activity and rating trends over time:
 - **Monthly review volume** — Bar chart showing how many reviews were submitted each month
 - **Average rating over time** — Line chart tracking the average star rating per month with y-axis fixed between 1 and 5
 
----
 
 #### 💬 Sentiment Analysis
 
@@ -510,8 +509,6 @@ Color encoding:
 - 🟢 Positive
 - ⚪ Neutral
 - 🔴 Negative
-
----
 
 #### 🗂️ Issue Categories
 
@@ -535,8 +532,6 @@ Categories covered:
 | `ux` | User interface and usability concerns |
 | `other` | Uncategorized or ambiguous reviews |
 
----
-
 #### 📦 App Version Analysis
 
 Three views for understanding performance across app versions:
@@ -545,8 +540,6 @@ Three views for understanding performance across app versions:
 - **Top 20 versions by review volume** — Horizontal bar chart showing which versions received the most reviews
 - **Sentiment breakdown — top 15 versions by volume** — Stacked bar chart showing positive, negative, and neutral counts per version
 - **Version details table** — Sortable dataframe showing `app_version`, `total_reviews`, `avg_rating`, `positive_pct`, `negative_pct`, `first_review_date`, `last_review_date`
-
----
 
 #### ☁️ Review Wordcloud
 
