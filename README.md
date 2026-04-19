@@ -27,7 +27,7 @@ So instead of reading reviews one by one, this project builds an end-to-end data
 
 #### 🔄 Pipeline Overview
 
-- Extract review data using [google-play-scraper](https://pypi.org/project/google-play-scraper/)
+- Extract reviews data using [google-play-scraper](https://pypi.org/project/google-play-scraper/)
 - Transform raw review text through cleaning and preprocessing
 - Enrich each review using sentiment analysis to classify it as:
   - Positive
@@ -242,7 +242,7 @@ Silver Dataset (GCS / BigQuery Staging)
   - Retains only relevant fields for downstream processing and analysis  
   
 - **Sentiment Classification (Rule-Based)**  
-  - For the sake of simplicity and making this more focused on the data engineering aspect and not machine learning. I have decided to just implement a simple rule based system for classifying the sentiment based on score
+  - For the sake of simplicity and making this more focused on the data engineering aspect and not machine learning. I have decided to just implement a simple rule-based system for classifying the sentiment based on score
      - Sentiments are categorized as follows:
        - Score 4-5 = `Positve`
        - Score 3 = `Neutral`
@@ -369,8 +369,6 @@ The Gold layer follows a **star schema** pattern:
   <img src="resources/images/dbt_lineage.png" alt="dbt lineage">
 </p>
 
-
-
 #### Data Quality Tests
 
 dbt tests are defined across all models to ensure data integrity:
@@ -429,6 +427,10 @@ The full pipeline is orchestrated using **Kestra** running locally via Docker. A
   <img src="resources/images/kestra_full_pipeline.png" alt="kestra full pipeline">
 </p>
 
+----
+
+## 📱 Dashboard 
+
 
 ----
 #### Checklist
@@ -436,13 +438,14 @@ The full pipeline is orchestrated using **Kestra** running locally via Docker. A
 - [x] Ingestion:
    - [x] Histrocial Backfill - Using google-play-scraper = json
    - [x] Incremental Batch - Kestra
-- [ ] Data Lake
+- [x] Data Lake
    - [x] Raw 
    - [x] Processed
 - [x] Processing > parse, clean, issue assignment, sentiment assignment and transforms
-- [ ] Warehouse > local (duckdb fallback) and GCP
+- [x] Warehouse > local (duckdb fallback) and GCP
 - [x] dbt > Transforms
 - [x] orchestrate > Kestra
-- [ ] dashboard > streamlit
+- [x] dashboard > streamlit
 - [x] test > sentiments and transform in processing
 - [ ] documentation flowcharts.
+- [ ] learning in public
