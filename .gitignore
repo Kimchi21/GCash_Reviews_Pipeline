@@ -3,8 +3,6 @@ keys/*.json
 
 .env
 
-parquet_files
-*.parquet
 
 logs/
 

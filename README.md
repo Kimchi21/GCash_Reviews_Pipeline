@@ -183,9 +183,9 @@ This approach ensures that:
 
 4. Go to the **KV Store** to store the needed keys and corresponding values which are the following:
    - gcp_credentials > just paste the entire content of json file here.
-   - gcp_processed_bucket
-   - gcp_project_id
-   - gcp_raw_bucket
+   - gcp_processed_bucket > gcash-reviews-processed
+   - gcp_project_id > gcash-reviews-pipeline
+   - gcp_raw_bucket > gcash-reviews-raw
 
 <p align="center">
   <img src="resources/images/kestra_kvstore.png" alt="kvstore">
@@ -425,6 +425,10 @@ The full pipeline is orchestrated using **Kestra** running locally via Docker. A
 
 <p align="center">
   <img src="resources/images/kestra_full_pipeline.png" alt="kestra full pipeline">
+</p>
+
+<p align="center">
+  <img src="resources/images/kestra_full_pipeline_execution.png" alt="kestra full pipeline execution">
 </p>
 
 ----
