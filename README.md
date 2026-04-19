@@ -108,7 +108,6 @@ The target application is identified using its Google Play Store app ID (shown b
   <img src="resources/images/gcash_id.png" alt="GCash app ID">
 </p>
 
----
 
 #### Key Behavior
 
@@ -205,6 +204,7 @@ As mentioned earlier I will be manually deleting `April 2026` data from the buck
   <img src="resources/images/kestra_completion.png" alt="completion">
 </p>
 
+--- 
 
 #### **🥈 Processing (Silver Layer)**
 
@@ -212,16 +212,12 @@ The Silver layer is responsible for transforming raw review data from the Bronze
 
 This stage is fully orchestrated using **Kestra**, where each transformation step is executed.
 
----
-
 #### Objective
 
 - Clean and standardize raw review data  
 - Enrich reviews with **sentiment labels**  
 - Assign **issue categories** to group similar user concerns  
 - Prepare a structured dataset for loading into the data warehouse  
-
----
 
 #### Processing Workflow
 
@@ -298,6 +294,142 @@ Loading the silver dataset to bigquery was also done. The approach for this is t
 </p>
 
 
+---
+
+#### **🥇 Transformations (Gold Layer)**
+
+The Gold layer is responsible for transforming the enriched Silver dataset into **analytics-ready tables** optimized for reporting and visualization.
+
+This stage uses **dbt (data build tool)** to apply dimensional modeling and build aggregate mart tables on top of the BigQuery external table.
+
+#### Objective
+
+- Apply dimensional modeling (fact + dimension tables)
+- Build aggregated mart tables for dashboard consumption
+- Enforce data quality via dbt tests
+
+#### dbt Project Structure
+
+```text
+gcash_reviews/
+├── dbt_project.yml
+├── packages.yml
+└── models/
+    ├── staging/
+    │   ├── sources.yml
+    │   ├── schema.yml
+    │   ├── stg_gcash_reviews.sql    ← cleaned view on top of external table
+    │   ├── dim_dates.sql             ← date dimension
+    │   ├── dim_app_versions.sql      ← app version dimension
+    │   └── fct_reviews.sql           ← core fact table
+    └── marts/
+        ├── _schema.yml
+        ├── monthly_ratings.sql       ← monthly aggregate ratings
+        ├── sentiment_summary.sql     ← monthly sentiment distribution
+        ├── category_trends.sql       ← monthly category breakdown
+        └── version_ratings.sql       ← ratings by app version
+```
+
+#### Transformation Workflow
+
+```text
+Silver (BigQuery External Table — processed_reviews)
+   ↓
+stg_gcash_reviews (view — clean & cast columns)
+   ↓
+dim_dates          dim_app_versions
+        ↘         ↙
+         fct_reviews (fact table — one row per review)
+              ↓
+    ┌─────────────────────────┐
+    │  monthly_ratings        │
+    │  sentiment_summary      │
+    │  category_trends        │
+    │  version_ratings        │
+    └─────────────────────────┘
+```
+
+#### Dimensional Model
+
+The Gold layer follows a **star schema** pattern:
+>> Side Note: This schema is sort of a hybrid dimensional warehouse: a core star schema surrounded by a set of downstream data marts for performance and reporting.
+
+| Table | Type | Description |
+|---|---|---|
+| `stg_gcash_reviews` | View | Cleaned staging layer on top of external table |
+| `dim_dates` | Dimension | Calendar table with year, month, quarter, day of week |
+| `dim_app_versions` | Dimension | App version metadata with ratings and sentiment breakdown |
+| `fct_reviews` | Fact | One row per review with FK references to dimensions |
+| `monthly_ratings` | Mart | Monthly aggregate ratings, star breakdown, reply rate |
+| `sentiment_summary` | Mart | Monthly sentiment distribution with percentages |
+| `category_trends` | Mart | Monthly category breakdown with sentiment split |
+| `version_ratings` | Mart | Ratings and sentiment breakdown per app version |
+
+<p align="center">
+  <img src="resources/images/dbt_lineage.png" alt="dbt lineage">
+</p>
+
+
+
+#### Data Quality Tests
+
+dbt tests are defined across all models to ensure data integrity:
+
+| Test | Models | Description |
+|---|---|---|
+| `unique` | `review_id`, `date_id`, `app_version_id` | No duplicate keys |
+| `not_null` | All key columns | No missing critical fields |
+| `accepted_values` | `score`, `sentiment`, `category` | Values within expected range |
+
+All **37 tests pass** successfully.
+
+<p align="center">
+  <img src="resources/images/kestra_dbt_completion.png" alt="dbt tests">
+</p>
+
+#### Kestra (Gold Layer Setup)
+
+1. Go to **Flows** section and create a new flow and paste the [03_dbt.yml](kestra/flows/03_dbt.yml) and save as new workflow
+2. Go to the same **Namespaces** and upload all dbt model files under `gcash_reviews/models/` replicating the local folder structure
+
+<p align="center">
+  <img src="resources/images/kestra_dbt_file.png" alt="dbt files">
+</p>
+
+3. Execute the flow — dbt will install packages, run all models, and execute all tests
+
+#### Gold Tables in BigQuery
+
+After the dbt run completes, the following datasets are available in BigQuery:
+
+| Dataset | Contents |
+|---|---|
+| `gcash_reviews_gold_staging` | `stg_gcash_reviews`, `dim_dates`, `dim_app_versions`, `fct_reviews` |
+| `gcash_reviews_gold_gold` | `monthly_ratings`, `sentiment_summary`, `category_trends`, `version_ratings` |
+
+<p align="center">
+  <img src="resources/images/gcs_bq_gold.png" alt="bigquery gold">
+</p>
+
+---
+
+#### **🔁 Orchestration**
+
+The full pipeline is orchestrated using **Kestra** running locally via Docker. All four flows are chained together in a master pipeline that runs on a daily schedule.
+> Note: When running the full pipeline we must first disable/comment out the triggers or flow schedules in each step: ingestion, processing and dbt_transform. This so to avoid double-runs.
+
+| Flow | ID | Schedule | Description |
+|---|---|---|---|
+| Incremental ingestion | `gcash_incremental_ingestion` | Disabled (runs via master) | Scrape new reviews |
+| Processing | `gcash_processing` | Disabled (runs via master) | Clean and enrich reviews |
+| dbt transformations | `gcash_dbt` | Disabled (runs via master) | Build Gold tables |
+| **Full pipeline** | `gcash_full_pipeline` | `0 5 * * *` (5AM daily) | Chains all three flows |
+
+<p align="center">
+  <img src="resources/images/kestra_full_pipeline.png" alt="kestra full pipeline">
+</p>
+
+
 ----
 #### Checklist
 - [x] Terraform Provision - GCP > buckets and bigquery
@@ -309,8 +441,8 @@ Loading the silver dataset to bigquery was also done. The approach for this is t
    - [x] Processed
 - [x] Processing > parse, clean, issue assignment, sentiment assignment and transforms
 - [ ] Warehouse > local (duckdb fallback) and GCP
-- [ ] dbt > Transforms
-- [ ] orchestrate > Kestra
+- [x] dbt > Transforms
+- [x] orchestrate > Kestra
 - [ ] dashboard > streamlit
-- [ ] test > sentiments and transform in processing
+- [x] test > sentiments and transform in processing
 - [ ] documentation flowcharts.

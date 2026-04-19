@@ -1,0 +1,37 @@
+id: gcash_full_pipeline
+namespace: gcash.reviews
+description: "Full GCash reviews pipeline — ingest, process, transform"
+
+triggers:
+  - id: daily_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 5 * * *"  # runs daily at 5AM
+
+tasks:
+  - id: ingestion
+    type: io.kestra.plugin.core.flow.Subflow
+    description: "Step 1 — scrape new reviews and upload to GCS raw bucket"
+    namespace: gcash.reviews
+    flowId: gcash_incremental_ingestion
+    wait: true
+    transmitFailed: true
+
+  - id: processing
+    type: io.kestra.plugin.core.flow.Subflow
+    description: "Step 2 — clean, sentiment, categorize and upload to GCS processed bucket"
+    namespace: gcash.reviews
+    flowId: gcash_processing
+    wait: true
+    transmitFailed: true
+
+  - id: dbt_transform
+    type: io.kestra.plugin.core.flow.Subflow
+    description: "Step 3 — run dbt to build Gold layer tables"
+    namespace: gcash.reviews
+    flowId: gcash_dbt
+    wait: true
+    transmitFailed: true
+
+  - id: log_completion
+    type: io.kestra.plugin.core.log.Log
+    message: "Full pipeline complete — dashboard data is up to date"

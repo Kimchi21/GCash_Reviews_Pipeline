@@ -79,3 +79,19 @@ resource "google_bigquery_dataset" "gcash_reviews" {
 
   delete_contents_on_destroy = true
 }
+
+# Staging dataset (Silver → Gold transition)
+resource "google_bigquery_dataset" "gcash_reviews_staging" {
+  dataset_id                 = "gcash_reviews_gold_staging"
+  location                   = var.region
+  description                = "dbt staging models"
+  delete_contents_on_destroy = true
+}
+
+# Gold dataset (already exists but rename to match dbt output)
+resource "google_bigquery_dataset" "gcash_reviews_gold" {
+  dataset_id                 = "gcash_reviews_gold_gold"
+  location                   = var.region
+  description                = "dbt gold mart models"
+  delete_contents_on_destroy = true
+}

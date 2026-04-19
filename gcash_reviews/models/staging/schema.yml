@@ -1,0 +1,88 @@
+version: 2
+
+models:
+  - name: stg_gcash_reviews
+    description: "Cleaned and enriched GCash reviews from processed GCS bucket"
+    columns:
+      - name: review_id
+        description: "Unique review identifier"
+        tests:
+          - unique
+          - not_null
+      - name: score
+        description: "Star rating 1-5"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4, 5]
+              quote: false
+      - name: sentiment
+        description: "Derived sentiment from score"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['positive', 'negative', 'neutral']
+      - name: category
+        description: "Issue category from keyword classifier"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['praise', 'transaction', 'verification', 'performance', 'login', 'feature', 'ux', 'other']
+      - name: reviewed_at
+        description: "Timestamp of review"
+        tests:
+          - not_null
+
+  - name: dim_dates
+    description: "Date dimension table"
+    columns:
+      - name: date_id
+        description: "Surrogate date key in YYYYMMDD format"
+        tests:
+          - unique
+          - not_null
+      - name: full_date
+        description: "Full date value"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_app_versions
+    description: "App version dimension table"
+    columns:
+      - name: app_version_id
+        description: "Surrogate key for app version"
+        tests:
+          - unique
+          - not_null
+      - name: app_version
+        description: "App version string"
+        tests:
+          - unique
+          - not_null
+
+  - name: fct_reviews
+    description: "Fact table — one row per review"
+    columns:
+      - name: review_id
+        description: "Unique review identifier"
+        tests:
+          - unique
+          - not_null
+      - name: score
+        description: "Star rating 1-5"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4, 5]
+              quote: false
+      - name: sentiment
+        description: "Derived sentiment"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['positive', 'negative', 'neutral']
+      - name: category
+        description: "Issue category"
+        tests:
+          - not_null

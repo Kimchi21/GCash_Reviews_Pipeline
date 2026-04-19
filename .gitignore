@@ -5,3 +5,7 @@ keys/*.json
 
 parquet_files
 *.parquet
+
+logs/
+
+gcp-credentials.json/

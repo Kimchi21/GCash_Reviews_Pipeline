@@ -1,0 +1,61 @@
+id: gcash_dbt
+namespace: gcash.reviews
+description: "Run dbt transformations to build Gold layer tables in BigQuery"
+
+triggers:
+  - id: daily_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 7 * * *"  # runs 30 mins after processing
+
+tasks:
+  - id: dbt_run
+    type: io.kestra.plugin.scripts.python.Commands
+    description: "Run dbt models"
+    docker:
+      image: python:3.12-slim
+    beforeCommands:
+      - pip install dbt-bigquery -q
+      - mkdir -p /app/keys
+      - mkdir -p /root/.dbt
+      - |
+        cat > /app/keys/gcp-credentials.json << 'EOF'
+        {{ kv("gcp_credentials") }}
+        EOF
+      - |
+        cat > /root/.dbt/profiles.yml << 'EOF'
+        gcash_reviews:
+          target: prod
+          outputs:
+            prod:
+              type: bigquery
+              method: service-account
+              project: {{ kv("gcp_project_id") }}
+              dataset: gcash_reviews_gold
+              location: asia-southeast1
+              keyfile: /app/keys/gcp-credentials.json
+              threads: 4
+              timeout_seconds: 300
+        EOF
+    inputFiles:
+      gcash_reviews/dbt_project.yml: "{{ read('gcash_reviews/dbt_project.yml') }}"
+      gcash_reviews/packages.yml: "{{ read('gcash_reviews/packages.yml') }}"
+      gcash_reviews/models/staging/stg_gcash_reviews.sql: "{{ read('gcash_reviews/models/staging/stg_gcash_reviews.sql') }}"
+      gcash_reviews/models/staging/dim_dates.sql: "{{ read('gcash_reviews/models/staging/dim_dates.sql') }}"
+      gcash_reviews/models/staging/dim_app_versions.sql: "{{ read('gcash_reviews/models/staging/dim_app_versions.sql') }}"
+      gcash_reviews/models/staging/fct_reviews.sql: "{{ read('gcash_reviews/models/staging/fct_reviews.sql') }}"
+      gcash_reviews/models/staging/sources.yml: "{{ read('gcash_reviews/models/staging/sources.yml') }}"
+      gcash_reviews/models/staging/schema.yml: "{{ read('gcash_reviews/models/staging/schema.yml') }}"
+      gcash_reviews/models/marts/monthly_ratings.sql: "{{ read('gcash_reviews/models/marts/monthly_ratings.sql') }}"
+      gcash_reviews/models/marts/sentiment_summary.sql: "{{ read('gcash_reviews/models/marts/sentiment_summary.sql') }}"
+      gcash_reviews/models/marts/category_trends.sql: "{{ read('gcash_reviews/models/marts/category_trends.sql') }}"
+      gcash_reviews/models/marts/version_ratings.sql: "{{ read('gcash_reviews/models/marts/version_ratings.sql') }}"
+      gcash_reviews/models/marts/_schema.yml: "{{ read('gcash_reviews/models/marts/_schema.yml') }}"
+    commands:
+      - cd gcash_reviews
+      - dbt deps
+      - dbt run
+      - dbt test
+
+  - id: log_completion
+    type: io.kestra.plugin.core.log.Log
+    message: "dbt run complete — Gold tables updated in BigQuery"

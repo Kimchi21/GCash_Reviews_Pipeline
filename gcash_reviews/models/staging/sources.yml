@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: gcash_reviews
+    database: gcash-reviews-pipeline
+    schema: gcash_reviews
+    tables:
+      - name: processed_reviews
+        description: "Processed GCash reviews from GCS external table"

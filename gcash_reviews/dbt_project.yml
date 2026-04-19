@@ -1,0 +1,29 @@
+name: 'gcash_reviews'
+version: '1.0.0'
+profile: 'gcash_reviews'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  gcash_reviews:
+    staging:
+      +materialized: view
+      +schema: staging
+      dim_dates:
+        +materialized: table
+      dim_app_versions:
+        +materialized: table
+      fct_reviews:
+        +materialized: table
+    marts:
+      +materialized: table
+      +schema: gold

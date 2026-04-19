@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: monthly_ratings
+    description: "Monthly aggregate ratings and review volume"
+    columns:
+      - name: year_month
+        description: "Year and month in YYYY-MM format"
+        tests:
+          - unique
+          - not_null
+      - name: total_reviews
+        description: "Total reviews submitted in the month"
+        tests:
+          - not_null
+      - name: avg_rating
+        description: "Average star rating for the month"
+        tests:
+          - not_null
+
+  - name: sentiment_summary
+    description: "Monthly sentiment distribution with percentages"
+    columns:
+      - name: sentiment
+        description: "positive, neutral, or negative"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['positive', 'negative', 'neutral']
+      - name: review_count
+        description: "Number of reviews for this sentiment in this month"
+        tests:
+          - not_null
+
+  - name: category_trends
+    description: "Monthly review counts by category and sentiment"
+    columns:
+      - name: category
+        description: "Issue category"
+        tests:
+          - not_null
+      - name: review_count
+        description: "Number of reviews for this category in this month"
+        tests:
+          - not_null
+
+  - name: version_ratings
+    description: "Ratings and sentiment breakdown by app version"
+    columns:
+      - name: app_version_id
+        description: "Surrogate key for app version"
+        tests:
+          - unique
+          - not_null
+      - name: app_version
+        description: "App version string"
+        tests:
+          - not_null
+      - name: avg_rating
+        description: "Average star rating for this version"
+        tests:
+          - not_null
