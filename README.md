@@ -167,6 +167,18 @@ This approach ensures that:
 - Runs on a scheduled batch workflow (e.g., daily or hourly)
 - References the watermark based on last review using 
   - Used [incremental_scraper.py](ingestion/incremental_scraper.py) and [watermark_seeder.py](ingestion/watermark_seeder.py) locally first before proceeding to kestra.
+  - The watermark_seeder will create a `watermark.json` file inside the bucket and this will be referenced in the future runs.
+
+<p align="center">
+  <img src="resources/images/gcs_bucket_raw_watermark.png" alt="watermark">
+</p>
+
+```json
+{
+  "last_scraped_at": "2026-04-18 15:36:04"
+}
+```
+
 - Fetches only newly available reviews from the source
 - Writes output directly to the **Bronze layer in Google Cloud Storage**
 - Maintains the same monthly partitioning strategy (`YYYY/MM`)
@@ -435,6 +447,114 @@ The full pipeline is orchestrated using **Kestra** running locally via Docker. A
 
 ## 📱 Dashboard 
 
+![GCash App Reviews Dashboard](resources/images/GCash%20App%20Reivews%20Dashboard.gif)
+
+The dashboard is built using **Streamlit** and provides an interactive interface to explore GCash app reviews across multiple dimensions. It connects to **BigQuery** as the primary data source with a **DuckDB local fallback** for offline use accesing the [gcash_reviews.parquet](notebooks/gcash_reviews.parquet) generated when running the eda notebook.
+
+### Data Source Toggle
+
+The dashboard supports two data sources switchable via a toggle in the sidebar:
+
+| Mode | Source | When to use |
+|---|---|---|
+| Default | BigQuery (Cloud) | Production — queries Gold layer tables directly |
+| Fallback | DuckDB (Local) | Offline development — reads from local parquet file |
+
+<p align="center">
+  <img src="resources/images/dashboard_data_source_toggle.png" alt="dashboard data source toggle">
+</p>
+
+### Sidebar Filters
+
+The following filters are available on the sidebar and apply globally across all charts:
+
+| Filter | Description |
+|---|---|
+| **Date range** | Slide to select a specific time window (year-month) |
+| **Categories** | Filter by one or more issue categories |
+| **Sentiment** | Filter by positive, neutral, or negative sentiment |
+| **App versions** | Filter by specific app version(s) — defaults to all |
+
+---
+
+### Dashboard Sections
+
+#### 📊 KPI Cards
+
+Five high-level metrics displayed at the top of the dashboard reflecting the current filter selection:
+
+| Metric | Description |
+|---|---|
+| Total reviews | Total number of reviews in the selected period |
+| Avg rating | Average star rating across all filtered reviews |
+| Positive | Total count of positive reviews |
+| Negative | Total count of negative reviews |
+| Positive rate | Percentage of reviews classified as positive |
+
+---
+
+#### 📈 Volume & Ratings
+
+Covers the overall review activity and rating trends over time:
+
+- **Monthly review volume** — Bar chart showing how many reviews were submitted each month
+- **Average rating over time** — Line chart tracking the average star rating per month with y-axis fixed between 1 and 5
+
+---
+
+#### 💬 Sentiment Analysis
+
+- **Sentiment distribution over time** — Stacked area chart showing the monthly breakdown of positive, neutral, and negative reviews
+
+Color encoding:
+- 🟢 Positive
+- ⚪ Neutral
+- 🔴 Negative
+
+---
+
+#### 🗂️ Issue Categories
+
+Four charts providing a deep dive into the issue categorization:
+
+- **Reviews by category** — Horizontal bar chart ranked by volume
+- **Category share** — Donut chart showing the proportional split across categories
+- **Category trends over time** — Line chart tracking each category's monthly volume
+- **Sentiment breakdown by category** — Stacked bar chart showing the sentiment split within each category
+
+Categories covered:
+
+| Category | Description |
+|---|---|
+| `praise` | Positive feedback and compliments |
+| `transaction` | Payment failures, transfers, cash-in/out issues |
+| `verification` | KYC, identity verification, account verification |
+| `performance` | App crashes, lag, loading issues |
+| `login` | OTP issues, authentication, account access |
+| `feature` | Feature requests and suggestions |
+| `ux` | User interface and usability concerns |
+| `other` | Uncategorized or ambiguous reviews |
+
+---
+
+#### 📦 App Version Analysis
+
+Three views for understanding performance across app versions:
+
+- **Top 20 versions by avg rating** — Horizontal bar chart with a red-yellow-green color scale
+- **Top 20 versions by review volume** — Horizontal bar chart showing which versions received the most reviews
+- **Sentiment breakdown — top 15 versions by volume** — Stacked bar chart showing positive, negative, and neutral counts per version
+- **Version details table** — Sortable dataframe showing `app_version`, `total_reviews`, `avg_rating`, `positive_pct`, `negative_pct`, `first_review_date`, `last_review_date`
+
+---
+
+#### ☁️ Review Wordcloud
+
+A wordcloud generated from the full text of all reviews using the most frequently occurring words. This gives a quick visual summary of the language and topics that appear most often across the entire dataset.
+
+- Maximum **200 words** displayed
+- Color scheme: **Blues** colormap
+- Rendered using the `wordcloud` Python library
 
 ----
 #### Checklist
