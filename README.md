@@ -156,7 +156,7 @@ Each review extracted from the Google Play Store is represented as a structured 
 
 The incremental ingestion layer is orchestrated using Kestra which is hosted locally in docker and is designed to continuously update the Bronze layer with newly available reviews.
 
-> Note: To simulate a real-world incremental ingestion scenario, the historical partition for **2026-04** was intentionally removed from the dataset. This allows the Kestra pipeline to re-ingest and populate this partition as part of its scheduled execution.
+> Note: To simulate a real-world incremental ingestion scenario, the historical partition for **2026-04** was intentionally removed from the bucket. This allows the Kestra pipeline to re-ingest and populate this partition as part of its scheduled execution.
 
 This approach ensures that:
 - Incremental ingestion logic is properly tested
@@ -212,7 +212,7 @@ As mentioned earlier I will be manually deleting `April 2026` data from the buck
 - [x] Terraform Provision - GCP > buckets and bigquery
 - [x] Ingestion:
    - [x] Histrocial Backfill - Using google-play-scraper = json
-   - [ ] Incremental Batch - Kestra
+   - [x] Incremental Batch - Kestra
 - [ ] Data Lake
    - [x] Raw 
    - [ ] Processed
