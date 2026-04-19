@@ -84,7 +84,7 @@ The objective is to create a scalable system that converts raw user feedback int
 
 ### Pipeline Logic and Setup
 
-#### 🥉 Ingestion (Bronze Layer)
+#### **🥉 Ingestion (Bronze Layer)**
 
 The ingestion layer is implemented using a two-phase batch ingestion strategy:
 
@@ -98,9 +98,9 @@ This ensures both:
 - Complete historical coverage for analytics
 - Ongoing updates for freshness
 
-#### 1. Historical Backfill Scraper (Bootstrap Phase)
+#### **1. Historical Backfill Scraper (Bootstrap Phase)**
 
-A standalone Python script (`scraper.py`) is used to perform a **full historical extraction of Google Play reviews** using `google-play-scraper`. This script is executed once to initialize the data lake with complete historical coverage.
+A standalone Python script [scraper.py](ingestion\scraper.py) is used to perform a **full historical extraction of Google Play reviews** using `google-play-scraper`. This script is executed once to initialize the data lake with complete historical coverage.
 
 The target application is identified using its Google Play Store app ID (shown below). The scraping configuration is set to `country = ph` to target reviews from the Philippines.
 
@@ -134,7 +134,7 @@ All records were partitioned by year and month during ingestion and uploaded to 
 
 #### Returned Data Schema
 
-Each review extracted from the Google Play Store is represented as a structured JSON object with the following fields:
+Each review extract from the Google Play Store is represented as a structured JSON object with the following fields:
 ```json id="r8v3qp"
 {
   "reviewId": "string",
@@ -152,7 +152,7 @@ Each review extracted from the Google Play Store is represented as a structured 
 ```
 > Note: To ensure data privacy, the `userName` and `userImage` fields will be dropped during the processing stage.
 
-#### 2. Incremental batch ingestion (Kestra)
+#### **2. Incremental batch ingestion (Kestra)**
 
 The incremental ingestion layer is orchestrated using Kestra which is hosted locally in docker and is designed to continuously update the Bronze layer with newly available reviews.
 
@@ -167,16 +167,16 @@ This approach ensures that:
 
 - Runs on a scheduled batch workflow (e.g., daily or hourly)
 - References the watermark based on last review using 
-  - Used (`incremental_scraper.py`) and (`watermark_seeder.py`) locally first before proceeding to kestra.
+  - Used [incremental_scraper.py](ingestion\incremental_scraper.py) and [watermark_seeder.py](ingestion\watermark_seeder.py) locally first before proceeding to kestra.
 - Fetches only newly available reviews from the source
 - Writes output directly to the **Bronze layer in Google Cloud Storage**
 - Maintains the same monthly partitioning strategy (`YYYY/MM`)
 - Ensures idempotent writes to prevent duplicate ingestion
 
-##### Kestra (Setup)
+#### Kestra (Broze Layer Setup)
 1. Host docker locally using a docker.
 2. Access `localhost:8080` as this is the port exposed in docker-compose.
-3. Go to **Flows** section and create a new flow and paste the `01.incremental_ingestion.yml` and save as new workflow
+3. Go to **Flows** section and create a new flow and paste the [01.incremental_ingestion.yml](kestra\flows\01_incremental_ingestion.yml) and save as new workflow
 
 <p align="center">
   <img src="resources/images/kestra_flow.png" alt="flow">
@@ -192,7 +192,7 @@ This approach ensures that:
   <img src="resources/images/kestra_kvstore.png" alt="kvstore">
 </p>
 
-5. Lastly, go to **Namespaces** and access the namespace created in the flow (this is identified as gcash.reviews). In here go to File tab and create a folder named `ingestion` and create the file `incremental_scraper.py` and paste the code here so kestra can reference it in the flow.
+5. Lastly, go to **Namespaces** and access the namespace created in the flow (this is identified as gcash.reviews). In here go to File tab and create a folder named `ingestion` and create the file [incremental_scraper.py](ingestion\incremental_scraper.py) and paste the code here so kestra can reference it in the flow.
 
 <p align="center">
   <img src="resources/images/kestra_file.png" alt="file">
@@ -206,6 +206,97 @@ As mentioned earlier I will be manually deleting `April 2026` data from the buck
 </p>
 
 
+#### **🥈 Processing (Silver Layer)**
+
+The Silver layer is responsible for transforming raw review data from the Bronze layer into a **clean, structured, and enriched dataset** that can be used for downstream analytics.
+
+This stage is fully orchestrated using **Kestra**, where each transformation step is executed.
+
+---
+
+#### Objective
+
+- Clean and standardize raw review data  
+- Enrich reviews with **sentiment labels**  
+- Assign **issue categories** to group similar user concerns  
+- Prepare a structured dataset for loading into the data warehouse  
+
+---
+
+#### Processing Workflow
+
+The Silver layer pipeline reads raw JSON files based on the year/month partition from the Bronze layer (GCS) and applies a sequence of transformations:
+
+```text
+Bronze (GCS Raw JSON)
+   ↓
+Data Cleaning & Preprocessing
+   ↓
+Sentiment Classification
+   ↓
+Issue Categorization / Clustering
+   ↓
+Silver Dataset (GCS / BigQuery Staging)
+```
+
+#### Key Transformations
+
+- **Data Privacy & Cleaning**
+  - Removes unnecessary fields (`userName`, `userImage`) to ensure data privacy compliance  
+  - Retains only relevant fields for downstream processing and analysis  
+  
+- **Sentiment Classification (Rule-Based)**  
+  - For the sake of simplicity and making this more focused on the data engineering aspect and not machine learning. I have decided to just implement a simple rule based system for classifying the sentiment based on score
+     - Sentiments are categorized as follows:
+       - Score 4-5 = `Positve`
+       - Score 3 = `Neutral`
+       - Score 1-2 = `Negative`
+- **Issue Categorization (Rule-Based)**  
+  - I also implemented a more simpler approach here to just list keywords that would fit a certain category in order to categorize the issue.
+  - Main categories:
+    - `verification` → account verification, KYC, identity issues  
+    - `transaction` → payment failures, delays, transfers  
+    - `login` → OTP issues, authentication problems  
+    - `performance` → app crashes, lag, loading issues  
+    - `ux` → user interface and usability concerns  
+    - `feature` → missing features or feature requests  
+    - `praise` → positive feedback or compliments  
+    - `others` → uncategorized or ambiguous reviews  
+  - I also did a [sanity check](notebooks\eda_categorization.ipynb) to make sure the distribution of the categorization makes sense.
+
+
+#### Kestra (Silver Layer Setup)
+
+1. Go to **Flows** section and create a new flow and paste the [02.processing.yml](kestra\flows\02_processing.yml) and save as new workflow
+
+<p align="center">
+  <img src="resources/images/kestra_flow2.png" alt="flow">
+</p>
+
+2. Lastly, go to the same **Namespaces** and access the namespace created in the flow earlier (this is identified as gcash.reviews). In here go to File tab and create a folder named `processing` and replicate the setup in the [processing](processing) folder.
+> Note: You need to adjust how modules are handled in kestra because this will raise an error. To fix this simply remove the folder name "processing" for importing.
+
+<p align="center">
+  <img src="resources/images/kestra_processing_file.png" alt="file">
+</p>
+
+#### Processing Completion
+The process is executed in Kestra and is loaded to the `gcash-reviews-processed` bucket
+
+<p align="center">
+  <img src="resources/images/kestra_processing_completion.png" alt="processing completion">
+</p>
+
+<p align="center">
+  <img src="resources/images/gcs_bucket_processed.png" alt="gcs processed">
+</p>
+
+Loading the silver dataset to bigquery was also done. The approach for this is to use BigQuery external tables which points BigQuery directly at GCS JSON files, no loading needed
+
+<p align="center">
+  <img src="resources/images/gcs_bq_silver.png" alt="gcs bigquery">
+</p>
+
 
 ----
 #### Checklist
@@ -215,11 +306,11 @@ As mentioned earlier I will be manually deleting `April 2026` data from the buck
    - [x] Incremental Batch - Kestra
 - [ ] Data Lake
    - [x] Raw 
-   - [ ] Processed
-- [ ] Processing > parse, clean, issue assignment, sentiment assignment and transforms
+   - [x] Processed
+- [x] Processing > parse, clean, issue assignment, sentiment assignment and transforms
 - [ ] Warehouse > local (duckdb fallback) and GCP
 - [ ] dbt > Transforms
 - [ ] orchestrate > Kestra
 - [ ] dashboard > streamlit
-- [ ] test > sentiments and transform in processing
+- [x] test > sentiments and transform in processing
 - [ ] documentation flowcharts.

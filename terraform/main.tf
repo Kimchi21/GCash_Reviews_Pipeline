@@ -55,6 +55,22 @@ resource "google_storage_bucket" "processed" {
   }
 }
 
+# External table — processed reviews
+resource "google_bigquery_table" "processed_reviews" {
+  dataset_id          = google_bigquery_dataset.gcash_reviews.dataset_id
+  table_id            = "processed_reviews"
+  deletion_protection = false
+
+  external_data_configuration {
+    autodetect    = true
+    source_format = "NEWLINE_DELIMITED_JSON"
+    source_uris   = ["gs://${var.processed_bucket_name}/processed/*"]
+  }
+
+  depends_on = [google_bigquery_dataset.gcash_reviews]
+}
+
+
 # BigQuery Dataset (Gold)
 resource "google_bigquery_dataset" "gcash_reviews" {
   dataset_id  = var.bq_dataset_id

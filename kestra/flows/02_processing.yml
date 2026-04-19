@@ -1,0 +1,39 @@
+id: gcash_processing
+namespace: gcash.reviews
+description: "Process raw GCash reviews — clean, sentiment, categorize and upload to processed bucket"
+
+triggers:
+  - id: daily_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "30 6 * * *"  # runs 30 mins after ingestion
+
+tasks:
+  - id: run_processing
+    type: io.kestra.plugin.scripts.python.Commands
+    description: "Run processing pipeline on raw GCS partitions"
+    docker:
+      image: python:3.12-slim
+    beforeCommands:
+      - pip install google-cloud-storage python-dotenv -q
+      - mkdir -p /app/keys
+      - |
+        cat > /app/keys/gcp-credentials.json << 'EOF'
+        {{ kv("gcp_credentials") }}
+        EOF
+      - mkdir -p processing
+    env:
+      GCP_PROJECT_ID: "{{ kv('gcp_project_id') }}"
+      GCP_RAW_BUCKET: "{{ kv('gcp_raw_bucket') }}"
+      GCP_PROCESSED_BUCKET: "{{ kv('gcp_processed_bucket') }}"
+      GOOGLE_APPLICATION_CREDENTIALS: "/app/keys/gcp-credentials.json"
+    inputFiles:
+      processing/pipeline.py: "{{ read('processing/pipeline.py') }}"
+      processing/cleaner.py: "{{ read('processing/cleaner.py') }}"
+      processing/categorizer.py: "{{ read('processing/categorizer.py') }}"
+      processing/__init__.py: ""
+    commands:
+      - python processing/pipeline.py
+
+  - id: log_completion
+    type: io.kestra.plugin.core.log.Log
+    message: "Processing complete — enriched reviews uploaded to GCS processed bucket"
