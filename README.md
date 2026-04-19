@@ -100,7 +100,7 @@ This ensures both:
 
 #### **1. Historical Backfill Scraper (Bootstrap Phase)**
 
-A standalone Python script [scraper.py](ingestion\scraper.py) is used to perform a **full historical extraction of Google Play reviews** using `google-play-scraper`. This script is executed once to initialize the data lake with complete historical coverage.
+A standalone Python script [scraper.py](ingestion/scraper.py) is used to perform a **full historical extraction of Google Play reviews** using `google-play-scraper`. This script is executed once to initialize the data lake with complete historical coverage.
 
 The target application is identified using its Google Play Store app ID (shown below). The scraping configuration is set to `country = ph` to target reviews from the Philippines.
 
@@ -167,7 +167,7 @@ This approach ensures that:
 
 - Runs on a scheduled batch workflow (e.g., daily or hourly)
 - References the watermark based on last review using 
-  - Used [incremental_scraper.py](ingestion\incremental_scraper.py) and [watermark_seeder.py](ingestion\watermark_seeder.py) locally first before proceeding to kestra.
+  - Used [incremental_scraper.py](ingestion/incremental_scraper.py) and [watermark_seeder.py](ingestion/watermark_seeder.py) locally first before proceeding to kestra.
 - Fetches only newly available reviews from the source
 - Writes output directly to the **Bronze layer in Google Cloud Storage**
 - Maintains the same monthly partitioning strategy (`YYYY/MM`)
@@ -176,7 +176,7 @@ This approach ensures that:
 #### Kestra (Broze Layer Setup)
 1. Host docker locally using a docker.
 2. Access `localhost:8080` as this is the port exposed in docker-compose.
-3. Go to **Flows** section and create a new flow and paste the [01.incremental_ingestion.yml](kestra\flows\01_incremental_ingestion.yml) and save as new workflow
+3. Go to **Flows** section and create a new flow and paste the [01.incremental_ingestion.yml](kestra/flows/01_incremental_ingestion.yml) and save as new workflow
 
 <p align="center">
   <img src="resources/images/kestra_flow.png" alt="flow">
@@ -192,7 +192,7 @@ This approach ensures that:
   <img src="resources/images/kestra_kvstore.png" alt="kvstore">
 </p>
 
-5. Lastly, go to **Namespaces** and access the namespace created in the flow (this is identified as gcash.reviews). In here go to File tab and create a folder named `ingestion` and create the file [incremental_scraper.py](ingestion\incremental_scraper.py) and paste the code here so kestra can reference it in the flow.
+5. Lastly, go to **Namespaces** and access the namespace created in the flow (this is identified as gcash.reviews). In here go to File tab and create a folder named `ingestion` and create the file [incremental_scraper.py](ingestion/incremental_scraper.py) and paste the code here so kestra can reference it in the flow.
 
 <p align="center">
   <img src="resources/images/kestra_file.png" alt="file">
@@ -262,12 +262,12 @@ Silver Dataset (GCS / BigQuery Staging)
     - `feature` → missing features or feature requests  
     - `praise` → positive feedback or compliments  
     - `others` → uncategorized or ambiguous reviews  
-  - I also did a [sanity check](notebooks\eda_categorization.ipynb) to make sure the distribution of the categorization makes sense.
+  - I also did a [sanity check](notebooks/eda_categorization.ipynb) to make sure the distribution of the categorization makes sense.
 
 
 #### Kestra (Silver Layer Setup)
 
-1. Go to **Flows** section and create a new flow and paste the [02.processing.yml](kestra\flows\02_processing.yml) and save as new workflow
+1. Go to **Flows** section and create a new flow and paste the [02.processing.yml](kestra/flows/02_processing.yml) and save as new workflow
 
 <p align="center">
   <img src="resources/images/kestra_flow2.png" alt="flow">
@@ -312,5 +312,5 @@ Loading the silver dataset to bigquery was also done. The approach for this is t
 - [ ] dbt > Transforms
 - [ ] orchestrate > Kestra
 - [ ] dashboard > streamlit
-- [x] test > sentiments and transform in processing
+- [ ] test > sentiments and transform in processing
 - [ ] documentation flowcharts.
