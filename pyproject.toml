@@ -12,6 +12,7 @@ dependencies = [
     "google-play-scraper>=1.2.7",
     "numpy>=2.4.4",
     "pandas>=3.0.2",
+    "python-dotenv>=1.2.2",
     "scikit-learn>=1.8.0",
     "streamlit>=1.56.0",
 ]

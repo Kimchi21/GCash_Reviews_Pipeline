@@ -6,7 +6,9 @@ from datetime import datetime
 from google.cloud import storage
 from google.oauth2 import service_account
 from google_play_scraper import Sort, reviews
+from dotenv import load_dotenv
 
+load_dotenv()
 
 def get_gcs_client(credentials_path: str, project_id: str):
     credentials = service_account.Credentials.from_service_account_file(
@@ -16,7 +18,8 @@ def get_gcs_client(credentials_path: str, project_id: str):
 
 
 def get_watermark(client, bucket_name: str) -> datetime:
-    """Read last scraped timestamp from watermark file in GCS."""
+    """Read last scraped timestamp from watermark file in GCS.
+    Falls back to latest review timestamp found in raw bucket partitions."""
     bucket = client.bucket(bucket_name)
     blob = bucket.blob("watermark.json")
 
@@ -26,9 +29,37 @@ def get_watermark(client, bucket_name: str) -> datetime:
         print(f"Watermark found: {watermark}")
         return watermark
 
-    # fallback if no watermark exists yet
-    print("No watermark found — using default fallback of 2026-03-31 23:54:00")
-    return datetime(2026, 3, 31, 23, 54, 0)
+    # no watermark file — scan raw bucket for latest review timestamp
+    print("No watermark found — scanning raw bucket for latest review timestamp...")
+
+    latest_ts = None
+    blobs = client.list_blobs(bucket_name, prefix="raw/")
+
+    for raw_blob in blobs:
+        if not raw_blob.name.endswith(".json"):
+            continue
+
+        print(f"  Scanning {raw_blob.name}...")
+        data = json.loads(raw_blob.download_as_text())
+
+        for review in data:
+            dt = review.get("at")
+            if dt is None:
+                continue
+            if not isinstance(dt, datetime):
+                dt = datetime.strptime(str(dt), "%Y-%m-%d %H:%M:%S")
+            if latest_ts is None or dt > latest_ts:
+                latest_ts = dt
+
+    if latest_ts:
+        print(f"Latest timestamp found in bucket: {latest_ts}")
+        # save it as watermark so we don't need to scan again
+        save_watermark(client, bucket_name, latest_ts)
+        return latest_ts
+
+    # truly empty bucket — start from beginning
+    print("No reviews found in bucket — starting from scratch")
+    return datetime(2000, 1, 1, 0, 0, 0)
 
 
 def save_watermark(client, bucket_name: str, last_scraped_at: datetime) -> None:

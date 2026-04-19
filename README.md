@@ -163,8 +163,6 @@ This approach ensures that:
 - The pipeline can safely handle missing partitions
 - Data consistency is maintained across reruns
 
----
-
 #### Key Behavior
 
 - Runs on a scheduled batch workflow (e.g., daily or hourly)
@@ -175,7 +173,37 @@ This approach ensures that:
 - Maintains the same monthly partitioning strategy (`YYYY/MM`)
 - Ensures idempotent writes to prevent duplicate ingestion
 
+##### Kestra (Setup)
+1. Host docker locally using a docker.
+2. Access `localhost:8080` as this is the port exposed in docker-compose.
+3. Go to **Flows** section and create a new flow and paste the `01.incremental_ingestion.yml` and save as new workflow
 
+<p align="center">
+  <img src="resources/images/kestra_flow.png" alt="flow">
+</p>
+
+4. Go to the **KV Store** to store the needed keys and corresponding values which are the following:
+   - gcp_credentials > just paste the entire content of json file here.
+   - gcp_processed_bucket
+   - gcp_project_id
+   - gcp_raw_bucket
+
+<p align="center">
+  <img src="resources/images/kestra_kvstore.png" alt="kvstore">
+</p>
+
+5. Lastly, go to **Namespaces** and access the namespace created in the flow (this is identified as gcash.reviews). In here go to File tab and create a folder named `ingestion` and create the file `incremental_scraper.py` and paste the code here so kestra can reference it in the flow.
+
+<p align="center">
+  <img src="resources/images/kestra_file.png" alt="file">
+</p>
+
+#### Incremental Batch Ingestion Completion
+As mentioned earlier I will be manually deleting `April 2026` data from the bucket so we can simulate getting that data in kestra.
+
+<p align="center">
+  <img src="resources/images/kestra_completion.png" alt="completion">
+</p>
 
 
 

@@ -6,7 +6,9 @@ from datetime import datetime
 from google.cloud import storage
 from google.oauth2 import service_account
 from google_play_scraper import Sort, reviews
+from dotenv import load_dotenv
 
+load_dotenv()
 
 def get_gcs_client(credentials_path: str, project_id: str):
     credentials = service_account.Credentials.from_service_account_file(
