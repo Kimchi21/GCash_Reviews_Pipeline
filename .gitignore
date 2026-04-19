@@ -1,9 +1,14 @@
 #keys
 keys/*.json
 
+# environment variables
 .env
 
-
+# logs
 logs/
 
+# gcp credentials
 gcp-credentials.json/
+
+# streamlit secrests
+.streamlit/

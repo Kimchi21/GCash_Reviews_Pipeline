@@ -24,31 +24,37 @@ st.set_page_config(
 
 @st.cache_data(ttl=3600)
 def load_from_bigquery():
-    credentials = service_account.Credentials.from_service_account_file(
-        os.environ["gcp_service_account"]
+
+    credentials = service_account.Credentials.from_service_account_info(
+        dict(st.secrets["gcp_service_account"])
     )
+
     client = bigquery.Client(
-        project=os.environ["GCP_PROJECT_ID"],
+        project=st.secrets["GCP_PROJECT_ID"],
         credentials=credentials,
     )
 
     monthly = client.query("""
-        SELECT * FROM `gcash-reviews-pipeline.gcash_reviews_gold_gold.monthly_ratings`
+        SELECT *
+        FROM `gcash-reviews-pipeline.gcash_reviews_gold_gold.monthly_ratings`
         ORDER BY year_month
     """).to_dataframe()
 
     sentiment = client.query("""
-        SELECT * FROM `gcash-reviews-pipeline.gcash_reviews_gold_gold.sentiment_summary`
+        SELECT *
+        FROM `gcash-reviews-pipeline.gcash_reviews_gold_gold.sentiment_summary`
         ORDER BY year_month
     """).to_dataframe()
 
     category = client.query("""
-        SELECT * FROM `gcash-reviews-pipeline.gcash_reviews_gold_gold.category_trends`
+        SELECT *
+        FROM `gcash-reviews-pipeline.gcash_reviews_gold_gold.category_trends`
         ORDER BY year_month
     """).to_dataframe()
 
     version = client.query("""
-        SELECT * FROM `gcash-reviews-pipeline.gcash_reviews_gold_gold.version_ratings`
+        SELECT *
+        FROM `gcash-reviews-pipeline.gcash_reviews_gold_gold.version_ratings`
         ORDER BY avg_rating DESC
     """).to_dataframe()
 
