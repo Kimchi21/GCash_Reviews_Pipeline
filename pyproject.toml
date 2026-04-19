@@ -24,7 +24,7 @@ dependencies = [
 
 
 [tool.uv]
-package = true  # ← add this
+package = true
 
 [build-system]
 requires = ["hatchling"]

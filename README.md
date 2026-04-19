@@ -443,7 +443,7 @@ The full pipeline is orchestrated using **Kestra** running locally via Docker. A
   <img src="resources/images/kestra_full_pipeline_execution.png" alt="kestra full pipeline execution">
 </p>
 
-----
+
 
 ## 📱 Dashboard 
 
@@ -549,7 +549,116 @@ A wordcloud generated from the full text of all reviews using the most frequentl
 - Color scheme: **Blues** colormap
 - Rendered using the `wordcloud` Python library
 
-----
+
+
+## 🛠️ Conclusion and Points for Improvement
+### Conclusion
+This project successfully demonstrates an end-to-end data engineering pipeline built on modern open-source and cloud-native tools. Starting from raw Google Play Store reviews, the pipeline ingests, processes, transforms, and serves **931,715 (volume when I initially finished the first run) GCash app reviews spanning 2012 to 2026** through a fully orchestrated medallion architecture.
+
+The pipeline achieves the following:
+
+- **Reproducible infrastructure** provisioned via Terraform on Google Cloud Platform
+- **Two-phase ingestion strategy** combining a one-time historical backfill with daily incremental updates orchestrated by Kestra
+- **Automated processing** that cleans, enriches, and categorizes reviews using rule-based sentiment and issue classification — designed to handle multilingual content (English and Filipino/Tagalog)
+- **Dimensional modeling** in BigQuery via dbt, producing analytics-ready Gold tables with full test coverage
+- **Interactive dashboard** built in Streamlit that visualizes review trends, sentiment distribution, issue categories, and app version performance
+
+### Points for Improvement:
+- **Streaming ingestion** > Since this is live data and there are live reviews coming in the app store. I feel like a streaming type of ingestion could work better than daily batch ingestion. The reason I say this is because when I was running the full pipeline multiple times I noticed a discrepancy between the raw and processed buckets basically not being the same due to new reviews arriving between runs. A streaming pipeline would eliminate this lag and keep all layers in sync in near real-time.
+- **Improved issue categorization** — The current keyword-based classifier leaves approximately **29% of reviews uncategorized** (`other`). A more robust approach would be to use a multilingual zero-shot classification model (e.g. HuggingFace `mDeBERTa`) that can handle both English and Tagalog reviews without requiring labeled training data.
+- **Multilingual sentiment analysis** — The current rule-based sentiment classification using star ratings is reliable but loses nuance. A review can have a 3-star rating but contain strongly negative language. A multilingual sentiment model would capture this more accurately.
+
+
+## Project Setup
+
+### Prerequisites
+
+| Tool | Version | Purpose |
+|---|---|---|
+| Python | >= 3.12 | Runtime |
+| uv | latest | Python package manager |
+| Terraform | >= 1.5 | Infrastructure provisioning |
+| Docker Desktop | latest | Kestra orchestration |
+| Git | latest | Version control |
+
+Google Cloud Platform (GCP) Requirements:
+- A **Google Cloud Platform** account with billing enabled
+- A **GCP project** created and noted down
+- A **GCP service account** with the following roles:
+  - `Storage Object Admin`
+  - `BigQuery Data Editor`
+  - `BigQuery Job User`
+- A service account **JSON key file** downloaded locally
+
+### Project tree
+
+```
+gcash-reviews-pipeline/
+│
+├── keys/                                        # gitignored
+│   └── service-account-key.json
+│
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars
+│
+├── ingestion/
+│   ├── scraper.py                               # historical backfill
+│   ├── incremental_scraper.py                   # incremental ingestion
+│   └── watermark_seeder.py                      # watermark initializer
+│
+├── processing/
+│   ├── cleaner.py                               # parsing & cleaning
+│   ├── categorizer.py                           # sentiment classification and issue categorization
+│   ├── pipeline.py                              # orchestrates all steps
+|   └── __init__.py                              # package initialize
+│
+├── gcash_reviews/                               # dbt project
+│   ├── dbt_project.yml
+│   ├── packages.yml
+│   └── models/
+│       ├── staging/
+│       │   ├── stg_gcash_reviews.sql
+│       │   ├── dim_dates.sql
+│       │   ├── dim_app_versions.sql
+│       │   ├── fct_reviews.sql
+│       │   ├── sources.yml
+│       │   └── schema.yml
+│       └── marts/
+│           ├── monthly_ratings.sql
+│           ├── sentiment_summary.sql
+│           ├── category_trends.sql
+│           ├── version_ratings.sql
+│           └── _schema.yml
+│
+├── kestra/
+│   └── flows/
+│       ├── 01_incremental_ingestion.yml
+│       ├── 02_processing.yml
+│       ├── 03_dbt.yml
+│       └── 04_full_pipeline.yml
+│
+├── notebooks/
+│   ├── eda_categorization.ipynb
+|   ├── gcash_reviews.parquet                      # For local fallback
+│
+├── dashboard/
+│   └── app.py                                     # Streamlit dashboard
+|
+├── .streamlit/
+│   └── secrets.toml                               # Streamlit secrets (gitignored)
+|
+├── .env                                           # gitignored
+├── .gitignore
+├── pyproject.toml
+├── uv.lock
+└── README.md
+```
+
+---
+
 #### Checklist
 - [x] Terraform Provision - GCP > buckets and bigquery
 - [x] Ingestion:
@@ -564,5 +673,13 @@ A wordcloud generated from the full text of all reviews using the most frequentl
 - [x] orchestrate > Kestra
 - [x] dashboard > streamlit
 - [x] test > sentiments and transform in processing
-- [ ] documentation flowcharts.
+- [x] documentation flowcharts.
 - [ ] learning in public
+
+---
+
+## Acknowledgements
+
+- This project was developed in compliance with the requirements for the final capstone project.
+
+- Special thanks to the instructors and contributors of the [Data Engineering Zoomcamp](https://github.com/DataTalksClub/data-engineering-zoomcamp) for providing excellent learning materials and guidance throughout the program.
