@@ -449,7 +449,7 @@ The full pipeline is orchestrated using **Kestra** running locally via Docker. A
 
 ![GCash App Reviews Dashboard](resources/images/GCash%20App%20Reivews%20Dashboard.gif)
 
-**Dasboard Link**: 
+**Dasboard Link**: https://gcash-app-reviews-dashboard.streamlit.app/
 
 The dashboard is built using **Streamlit** and provides an interactive interface to explore GCash app reviews across multiple dimensions. It connects to **BigQuery** as the primary data source with a **DuckDB local fallback** for offline use accesing the [gcash_reviews.parquet](notebooks/gcash_reviews.parquet) generated when running the eda notebook.
 
