@@ -2,12 +2,12 @@ import json
 import os
 from datetime import datetime
 
+from dotenv import load_dotenv
 from google.cloud import storage
 from google.oauth2 import service_account
-from dotenv import load_dotenv
 
-from processing.cleaner import clean_review, assign_sentiment
-from processing.categorizer import categorize_review
+from cleaner import clean_review, assign_sentiment
+from categorizer import categorize_review
 
 load_dotenv()
 
@@ -28,6 +28,17 @@ def list_raw_partitions(client, raw_bucket: str) -> list:
             partitions.append(blob.name)
     return sorted(partitions)
 
+def parse_raw_file(text: str) -> list:
+    """Handle both JSON array and newline-delimited JSON formats."""
+    text = text.strip()
+    if text.startswith("["):
+        return json.loads(text)
+    else:
+        return [
+            json.loads(line)
+            for line in text.splitlines()
+            if line.strip()
+        ]
 
 def process_partition(
     client,
@@ -35,25 +46,29 @@ def process_partition(
     processed_bucket: str,
     blob_path: str,
 ) -> None:
-    # derive partition key from path e.g. raw/2026/04/gcash_reviews_2026-04.json
     parts = blob_path.split("/")
     year, month = parts[1], parts[2]
     partition_key = f"{year}/{month}"
     year_month = f"{year}-{month}"
     destination = f"processed/{partition_key}/gcash_reviews_{year_month}.json"
 
-    # skip if already processed
+    raw_blob = client.bucket(raw_bucket).blob(blob_path)
     proc_bucket = client.bucket(processed_bucket)
     dest_blob = proc_bucket.blob(destination)
+
+    raw_text = raw_blob.download_as_text()
+    raw_data = parse_raw_file(raw_text)
+
     if dest_blob.exists():
-        print(f"  Skipping {partition_key} — already processed")
-        return
+        proc_text = dest_blob.download_as_text()
+        proc_count = sum(1 for line in proc_text.splitlines() if line.strip())
 
-    # read raw data
-    raw_blob = client.bucket(raw_bucket).blob(blob_path)
-    raw_data = json.loads(raw_blob.download_as_text())
+        if len(raw_data) == proc_count:
+            print(f"  Skipping {partition_key} — already up to date ({proc_count} reviews)")
+            return
+        else:
+            print(f"  Reprocessing {partition_key} — raw has {len(raw_data)}, processed has {proc_count}")
 
-    # process each review
     processed = []
     for review in raw_data:
         cleaned = clean_review(review)
@@ -61,7 +76,6 @@ def process_partition(
         cleaned["category"] = categorize_review(cleaned["content"])
         processed.append(cleaned)
 
-    # upload to processed bucket
     dest_blob.upload_from_string(
         "\n".join(json.dumps(r, default=str) for r in processed),
         content_type="application/json",
@@ -71,7 +85,6 @@ def process_partition(
         f"  Processed {len(processed):>5} reviews "
         f"→ gs://{processed_bucket}/{destination}"
     )
-
 
 def run_pipeline(
     raw_bucket: str,
