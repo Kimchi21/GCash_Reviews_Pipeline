@@ -565,9 +565,9 @@ The pipeline achieves the following:
 
 ### Points for Improvement:
 - **Streaming ingestion** > Since this is live data and there are live reviews coming in the app store. I feel like a streaming type of ingestion could work better than daily batch ingestion. The reason I say this is because when I was running the full pipeline multiple times I noticed a discrepancy between the raw and processed buckets basically not being the same due to new reviews arriving between runs. A streaming pipeline would eliminate this lag and keep all layers in sync in near real-time.
-- **Improved issue categorization** — The current keyword-based classifier leaves approximately **29% of reviews uncategorized** (`other`). A more robust approach would be to use a multilingual zero-shot classification model (e.g. HuggingFace `mDeBERTa`) that can handle both English and Tagalog reviews without requiring labeled training data.
-- **Multilingual sentiment analysis** — The current rule-based sentiment classification using star ratings is reliable but loses nuance. A review can have a 3-star rating but contain strongly negative language. A multilingual sentiment model would capture this more accurately.
-- **Idempotent ingestion** — Running the pipeline multiple times in quick succession 
+- **Improved issue categorization** > The current keyword-based classifier leaves approximately **29% of reviews uncategorized** (`other`). A more robust approach would be to use a multilingual zero-shot classification model (e.g. HuggingFace `mDeBERTa`) that can handle both English and Tagalog reviews without requiring labeled training data.
+- **Multilingual sentiment analysis** > The current rule-based sentiment classification using star ratings is reliable but loses nuance. A review can have a 3-star rating but contain strongly negative language. A multilingual sentiment model would capture this more accurately.
+- **Idempotent ingestion** > Running the pipeline multiple times in quick succession 
   can cause duplicate records in the raw bucket due to a race condition between the 
   watermark save and the next pipeline execution. This is handled at the dbt staging 
   layer via `QUALIFY ROW_NUMBER()` deduplication but ideally should be prevented 
