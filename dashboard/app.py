@@ -15,7 +15,7 @@ load_dotenv()
 ### page config ###
 
 st.set_page_config(
-    page_title="GCash Reviews Dashboard",
+    page_title="GCash App Reviews Dashboard",
     page_icon="📱",
     layout="wide",
 )
