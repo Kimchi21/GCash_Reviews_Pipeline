@@ -828,13 +828,11 @@ uv run streamlit run dashboard/app.py
 ```
 
 Open `http://localhost:8501` in your browser.
-
----
 > When running the pipeline while the dashboard is open. Clear the cache then reload the dashboard in order to reflect changes.
-
 
 </details>
 
+---
 
 ### Project tree
 
