@@ -590,6 +590,246 @@ Google Cloud Platform (GCP) Requirements:
   - `BigQuery Job User`
 - A service account **JSON key file** downloaded locally
 
+### Full Setup
+
+<details>
+  <summary>Setup Instructions - Click to expand</summary>
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Kimchi21/GCash_Reviews_Pipeline.git
+cd gcash-reviews-pipeline
+```
+
+---
+
+### 2. Set up Python environment
+
+Install dependencies using `uv`:
+
+```bash
+uv sync
+```
+
+---
+
+### 3. Configure credentials and environment variables
+
+Create a `keys/` folder at the project root and place your GCP service account JSON key file inside:
+
+```
+gcash-reviews-pipeline/
+└── keys/
+    └── service-account-key.json
+```
+
+Create a `.env` file at the project root:
+
+```bash
+GCP_PROJECT_ID=your-gcp-project-id
+GCP_RAW_BUCKET=gcash-reviews-raw
+GCP_PROCESSED_BUCKET=gcash-reviews-processed
+GOOGLE_APPLICATION_CREDENTIALS=keys/your-service-account-key.json
+```
+
+---
+
+### 4. Provision GCP infrastructure via Terraform
+
+Navigate to the `terraform/` folder and update `terraform.tfvars` with your project details:
+
+```hcl
+project_id            = "your-gcp-project-id"
+raw_bucket_name       = "gcash-reviews-raw"
+processed_bucket_name = "gcash-reviews-processed"
+bq_dataset_id         = "gcash_reviews"
+```
+
+Then initialise and apply:
+
+```bash
+cd terraform
+terraform init
+terraform apply
+```
+
+Type `yes` when prompted. This will create:
+- GCS Raw Bucket (`gcash-reviews-raw`)
+- GCS Processed Bucket (`gcash-reviews-processed`)
+- BigQuery dataset (`gcash_reviews`)
+- BigQuery external table (`processed_reviews`)
+
+---
+
+### 5. Run historical backfill
+
+Navigate back to the project root and run the historical scraper to populate the Bronze layer:
+
+```bash
+cd ..
+uv run python ingestion/scraper.py
+```
+
+> ⚠️ This will take approximately **2 hours** (or depends on internet speed) to complete as it scrapes the full review history (~931k reviews). The script uploads monthly partitions to GCS in real time so you can monitor progress in the GCS console.
+
+---
+
+### 6. Seed the watermark
+
+After the backfill completes, seed the watermark file so the incremental scraper knows where to pick up from:
+
+```bash
+uv run python ingestion/watermark_seeder.py
+```
+
+---
+
+### 7. Run the processing pipeline
+
+Process all raw partitions and upload enriched data to the Silver layer:
+
+```bash
+uv run python processing/pipeline.py
+```
+
+---
+
+### 8. Run dbt transformations
+
+Navigate to the `gcash_reviews/` dbt project folder and run the models:
+
+```bash
+cd gcash_reviews
+uv run dbt deps
+uv run dbt run
+uv run dbt test
+```
+
+All **37 tests** should pass. Navigate back to the project root after completion:
+
+```bash
+cd ..
+```
+
+---
+
+### 9. Set up Kestra
+
+Start Kestra using Docker Compose:
+
+```bash
+docker compose up -d
+```
+
+Access the Kestra UI at `http://localhost:8080` and log in with:
+
+```
+Username: admin@kestra.io
+Password: Admin1234!
+```
+
+#### 9a. Configure KV Store
+
+Go to **Namespaces** → `gcash.reviews` → **KV Store** and add the following keys:
+
+| Key | Value |
+|---|---|
+| `gcp_project_id` | your GCP project ID |
+| `gcp_raw_bucket` | `gcash-reviews-raw` |
+| `gcp_processed_bucket` | `gcash-reviews-processed` |
+| `gcp_credentials` | paste entire contents of your service account JSON key file |
+
+#### 9b. Upload namespace files
+
+Go to **Namespaces** → `gcash.reviews` → **Files** and upload the following files maintaining the folder structure:
+
+```
+ingestion/
+└── incremental_scraper.py
+
+processing/
+├── pipeline.py
+├── cleaner.py
+└── categorizer.py
+
+gcash_reviews/
+├── dbt_project.yml
+├── packages.yml
+└── models/
+    ├── staging/
+    │   ├── sources.yml
+    │   ├── schema.yml
+    │   ├── stg_gcash_reviews.sql
+    │   ├── dim_dates.sql
+    │   ├── dim_app_versions.sql
+    │   └── fct_reviews.sql
+    └── marts/
+        ├── _schema.yml
+        ├── monthly_ratings.sql
+        ├── sentiment_summary.sql
+        ├── category_trends.sql
+        └── version_ratings.sql
+```
+
+#### 9c. Create Kestra flows
+
+Go to **Flows** → **Create** and paste each of the following flow files:
+
+| Flow file | Description |
+|---|---|
+| `kestra/flows/01_incremental_ingestion.yml` | Incremental scraper |
+| `kestra/flows/02_processing.yml` | Processing pipeline |
+| `kestra/flows/03_dbt.yml` | dbt transformations |
+| `kestra/flows/04_full_pipeline.yml` | Master orchestration flow |
+
+---
+
+### 10. Run the full pipeline
+
+Trigger the master pipeline manually in Kestra UI:
+
+1. Go to **Flows** → `gcash_full_pipeline`
+2. Click **Execute**
+3. Monitor the execution logs for each subflow
+
+The pipeline will run automatically every day at **5AM** going forward.
+
+---
+
+### 11. Launch the Streamlit dashboard
+
+Generate the local parquet file for the DuckDB fallback:
+
+```bash
+uv run jupyter notebook notebooks/
+```
+
+Run Cell 1 and Cell 2 in `eda.ipynb` to generate `notebooks/gcash_reviews.parquet`.
+
+Before running the dashboard create first the streamlit secrets in the root directory.
+> Note: This is similar to how environment variables are setup but is using a toml format (values must be a key value for example `GCP_PROJECT_ID = "gcash-reviews-pipeline"`)
+
+```
+gcash-reviews-pipeline/
+│
+├── .streamlit/                                   
+    └── secrets.toml
+```
+
+Then launch the dashboard:
+
+```bash
+uv run streamlit run dashboard/app.py
+```
+
+Open `http://localhost:8501` in your browser.
+
+---
+
+</details>
+
+
 ### Project tree
 
 ```
