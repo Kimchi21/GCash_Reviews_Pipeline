@@ -918,7 +918,7 @@ gcash-reviews-pipeline/
 - [x] dashboard > streamlit
 - [x] test > sentiments and transform in processing
 - [x] documentation flowcharts.
-- [ ] learning in public
+- [x] learning in public
 
 ---
 
